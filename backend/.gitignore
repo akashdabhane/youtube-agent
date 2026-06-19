@@ -1,0 +1,11 @@
+
+*.ipynb
+__pycache__/
+myvenv/
+myvenv3dot12/
+.env
+.DS_Store
+*.pyc
+
+rough.py
+rough.ipynb
