@@ -3,6 +3,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI  # ← only this chang
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 
 
 from tools.channel_tools import (
@@ -27,22 +28,24 @@ from tools.video_tools import (
     search_channel_videos,
 )
 
-# 1. Define  Gemini LLM
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    temperature=0,
-    convert_system_message_to_human=True,  # ← required for Gemini
-)
+# # 1. Define  Gemini LLM
+# llm = ChatGoogleGenerativeAI(
+#     model="gemini-2.5-flash",
+#     temperature=0,
+#     convert_system_message_to_human=True,  # ← required for Gemini
+# )
 
 # # 1. Define GROQ LLM
 # llm = ChatGroq(
-#     model="qwen/qwen3-32b",
+#     model="llama-3.1-8b-instant",
 #     temperature=0,
-#     max_tokens=None,
-#     reasoning_format="parsed",
-#     timeout=None,
-#     max_retries=2,
 # )
+
+# 1. Define Ollama LLM
+llm = ChatOllama(
+    model="qwen3:4b",
+    temperature=0,
+)
 
 # 2. Register all your tools in a list
 tools = [
