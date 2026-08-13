@@ -28,12 +28,12 @@ from tools.video_tools import (
     search_channel_videos,
 )
 
-# # 1. Define  Gemini LLM
-# llm = ChatGoogleGenerativeAI(
-#     model="gemini-2.5-flash",
-#     temperature=0,
-#     convert_system_message_to_human=True,  # ← required for Gemini
-# )
+# 1. Define  Gemini LLM
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash",
+    temperature=0,
+    convert_system_message_to_human=True,  # ← required for Gemini
+)
 
 # # 1. Define GROQ LLM
 # llm = ChatGroq(
@@ -41,11 +41,11 @@ from tools.video_tools import (
 #     temperature=0,
 # )
 
-# 1. Define Ollama LLM
-llm = ChatOllama(
-    model="qwen3:4b",
-    temperature=0,
-)
+# # 1. Define Ollama LLM
+# llm = ChatOllama(
+#     model="qwen3:4b",
+#     temperature=0,
+# )
 
 # 2. Register all your tools in a list
 tools = [
