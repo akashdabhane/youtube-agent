@@ -1,4 +1,4 @@
-// sidebar.js - Handles Extension Auth State & API Interactions
+// sidebar.js - Handles Extension Auth State & Dynamic Chat Messages
 
 let currentAuthMode = "login"; // "login" or "register"
 
@@ -35,6 +35,8 @@ async function updateUIBasedOnAuth() {
         } else {
             userEmailEl.innerText = "Authenticated User";
         }
+
+        updateActionsVisibility();
     } else {
         // User is Logged Out
         authContainer.classList.remove("hidden");
@@ -153,10 +155,33 @@ function clearAlert() {
 function setupChatListeners() {
     const askBtn = document.getElementById("askBtn");
     const closeBtn = document.getElementById("closeSidebar");
+    const questionInput = document.getElementById("question");
+    const actionBtns = document.querySelectorAll(".action-btn");
 
     if (askBtn) {
         askBtn.addEventListener("click", sendChatMessage);
     }
+
+    // Support Enter key press to send message (Shift+Enter for newline)
+    if (questionInput) {
+        questionInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendChatMessage();
+            }
+        });
+    }
+
+    // Quick Action Buttons click handler
+    actionBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const presetQuery = btn.dataset.query;
+            if (presetQuery && questionInput) {
+                questionInput.value = presetQuery;
+                sendChatMessage();
+            }
+        });
+    });
 
     if (closeBtn) {
         closeBtn.addEventListener("click", () => {
@@ -165,7 +190,29 @@ function setupChatListeners() {
     }
 }
 
-// Send chat message with Supabase Auth Token attached in Authorization Header
+// Hide quick action buttons if any user message is present in the chat
+function updateActionsVisibility() {
+    const actionsContainer = document.getElementById("actionsContainer");
+    const userMessages = document.querySelectorAll("#chatContainer .user-message");
+
+    if (actionsContainer) {
+        if (userMessages.length > 0) {
+            actionsContainer.classList.add("hidden");
+        } else {
+            actionsContainer.classList.remove("hidden");
+        }
+    }
+}
+
+// Auto-scroll chat container to the bottom
+function scrollToBottom() {
+    const chatContainer = document.getElementById("chatContainer");
+    if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+}
+
+// Send chat message and dynamically render user & AI response bubbles sequentially
 async function sendChatMessage() {
     const questionInput = document.getElementById("question");
     const query = questionInput.value.trim();
@@ -180,22 +227,30 @@ async function sendChatMessage() {
         return;
     }
 
+    const chatContainer = document.getElementById("chatContainer");
     const typingIndicator = document.getElementById("typingIndicator");
-    const responseContainer = document.getElementById("response");
 
-    // Display indicator
+    // 1. Clear input box immediately
+    questionInput.value = "";
+
+    // 2. Append User Message Bubble directly to chatContainer (Right Side)
+    const userMessageDiv = document.createElement("div");
+    userMessageDiv.className = "user-message";
+    userMessageDiv.innerText = query;
+    chatContainer.appendChild(userMessageDiv);
+
+    // Hide Quick Actions section as soon as user sends a message
+    updateActionsVisibility();
+
+    // 3. Move and Show Typing Indicator at the absolute bottom
+    chatContainer.appendChild(typingIndicator);
     typingIndicator.classList.remove("hidden");
-    responseContainer.classList.add("hidden");
+    scrollToBottom();
 
     try {
-        const [tab] = await chrome.tabs.query({
-            active: true,
-            currentWindow: true
-        });
-
         const backendUrl = CONFIG.BACKEND_API_URL || "http://localhost:8000";
 
-        // Fetch request with stored Bearer token header
+        // 4. Fetch request with Bearer token header
         const response = await fetch(`${backendUrl}/chat`, {
             method: "POST",
             headers: {
@@ -210,18 +265,33 @@ async function sendChatMessage() {
 
         const data = await response.json();
 
+        // 5. Hide typing indicator
         typingIndicator.classList.add("hidden");
-        responseContainer.classList.remove("hidden");
+
+        // 6. Append AI Response Bubble directly to chatContainer (Left Side)
+        const aiMessageDiv = document.createElement("div");
+        aiMessageDiv.className = "ai-message";
 
         if (response.ok) {
-            responseContainer.innerText = data.response || data.response[0].text || "No response received.";
+            aiMessageDiv.innerText = data.response || "No response received.";
         } else {
-            responseContainer.innerText = `Error: ${data.detail || "Failed to process query."}`;
+            aiMessageDiv.innerText = `Error: ${data.detail || "Failed to process query."}`;
         }
+
+        chatContainer.appendChild(aiMessageDiv);
+        scrollToBottom();
+
     } catch (error) {
         console.error("Fetch Error:", error);
+
+        // Hide typing indicator
         typingIndicator.classList.add("hidden");
-        responseContainer.classList.remove("hidden");
-        responseContainer.innerText = "Error connecting to backend server. Make sure FastAPI server is running.";
+
+        // Append Error Message Bubble
+        const errorMessageDiv = document.createElement("div");
+        errorMessageDiv.className = "ai-message";
+        errorMessageDiv.innerText = "Error connecting to backend server. Make sure FastAPI server is running.";
+        chatContainer.appendChild(errorMessageDiv);
+        scrollToBottom();
     }
 }

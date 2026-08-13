@@ -64,26 +64,22 @@
 
     <!-- Main App Container (Shown when logged in) -->
     <div id="mainAppContainer" class="main-app-container hidden">
-        <div class="actions">
-            <button class="action-btn">📝 Summary</button>
-            <button class="action-btn">🎯 Audience</button>
-            <button class="action-btn">📈 Growth</button>
-            <button class="action-btn">🖼 Thumbnail</button>
+        <div id="actionsContainer" class="actions">
+            <button class="action-btn" data-query="Summarize this video for me">📝 Summary</button>
+            <button class="action-btn" data-query="Analyze the audience and target demographic for this channel">🎯 Audience</button>
+            <button class="action-btn" data-query="Analyze the growth strategy and video performance">📈 Growth</button>
+            <button class="action-btn" data-query="Analyze recent video titles and content topics">🖼 Topics</button>
         </div>
 
         <div id="chatContainer">
             <div class="ai-message">
-                👋 Ask anything about this video.
+                👋 Ask anything about this video, channel, playlist or comments!
             </div>
 
             <div id="typingIndicator" class="typing hidden">
                 <span></span>
                 <span></span>
                 <span></span>
-            </div>
-
-            <div id="response" class="ai-message hidden">
-                <!-- AI response will be displayed here -->
             </div>
         </div>
 
