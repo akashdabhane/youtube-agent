@@ -70,7 +70,6 @@ def verify_supabase_token(credentials: HTTPAuthorizationCredentials = Depends(se
         except Exception as e:
             print(f"Supabase auth check failed: {e}")
 
-
     # 2. Decode JWT payload locally as fallback
     try:
         # Decode without key verification if secret is not set, but verify expiration
@@ -102,7 +101,6 @@ def verify_supabase_token(credentials: HTTPAuthorizationCredentials = Depends(se
     return {"id": "authenticated_user", "token": token}
 
 
-
 @app.get("/")
 async def root():
     return {"message": "Welcome to the YouTube Channel Analysis Agent!"}
@@ -110,6 +108,7 @@ async def root():
 
 class ChatRequest(BaseModel):
     query: str
+    url: Optional[str] = None
     user_id: Optional[str] = None
 
 
@@ -121,33 +120,54 @@ async def chat(
     # Use verified user ID from token or fallback to request body user_id
     user_id = current_user.get("id") or request.user_id or "default_user"
 
-    response = run(request.query, user_id)
+    response = run(request.query, user_id, request.url)
 
     return {
         "message": "Query processed successfully.",
         "success": True,   
         "query": request.query,
+        "url": request.url,
         "user_id": user_id,
         "response": response
     }
 
 
-def run(query: str, user_id: str):
+def run(query: str, user_id: str, url: Optional[str] = None):
     config = {
         "configurable": {
             "thread_id": user_id
         }
     }
 
-    # The agent takes a list of messages, just like a chat
-    result = agent.invoke({
-        "messages": [
-            {"role": "user", "content": query}
-        ]
-    }, config=config)
+    # Format user prompt with active URL context if provided
+    if url and url.strip():
+        formatted_message = f"Active YouTube Page URL: {url.strip()}\nUser Query: {query}"
+    else:
+        formatted_message = query
+
+    try:
+        result = agent.invoke({
+            "messages": [
+                {"role": "user", "content": formatted_message}
+            ]
+        }, config=config)
+    except Exception as e:
+        err_msg = str(e)
+        if "tool_calls" in err_msg or "INVALID_CHAT_HISTORY" in err_msg or "ToolMessage" in err_msg:
+            print(f"⚠️ Corrupted tool call chat history detected in thread {user_id}. Resetting thread state...")
+            fresh_config = {
+                "configurable": {
+                    "thread_id": f"{user_id}_reset"
+                }
+            }
+            result = agent.invoke({
+                "messages": [
+                    {"role": "user", "content": formatted_message}
+                ]
+            }, config=fresh_config)
+        else:
+            raise e
 
     # The final message in the list is the agent's answer
     final_answer = result["messages"][-1].content
     return final_answer
-
-

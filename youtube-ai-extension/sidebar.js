@@ -250,7 +250,24 @@ async function sendChatMessage() {
     try {
         const backendUrl = CONFIG.BACKEND_API_URL || "http://localhost:8000";
 
-        // 4. Fetch request with Bearer token header
+        // Get active YouTube tab URL from Chrome tabs API or referrer fallback
+        let activeTabUrl = "";
+        try {
+            if (typeof chrome !== "undefined" && chrome.tabs && chrome.tabs.query) {
+                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (tab && tab.url) {
+                    activeTabUrl = tab.url;
+                }
+            }
+        } catch (tabErr) {
+            console.warn("Could not retrieve active tab URL:", tabErr);
+        }
+
+        if (!activeTabUrl) {
+            activeTabUrl = document.referrer || window.location.href;
+        }
+
+        // 4. Fetch request with Bearer token header & active page URL
         const response = await fetch(`${backendUrl}/chat`, {
             method: "POST",
             headers: {
@@ -259,6 +276,7 @@ async function sendChatMessage() {
             },
             body: JSON.stringify({
                 query: query,
+                url: activeTabUrl,
                 user_id: user ? user.id : "1"
             })
         });
@@ -290,7 +308,7 @@ async function sendChatMessage() {
         // Append Error Message Bubble
         const errorMessageDiv = document.createElement("div");
         errorMessageDiv.className = "ai-message";
-        errorMessageDiv.innerText = "Error connecting to backend server. Make sure FastAPI server is running.";
+        errorMessageDiv.innerText = "Error connecting to backend server.";
         chatContainer.appendChild(errorMessageDiv);
         scrollToBottom();
     }

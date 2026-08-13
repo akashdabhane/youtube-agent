@@ -2,15 +2,12 @@ from langchain_core.tools import tool
 from googleapiclient.discovery import build
 import os
 from dotenv import load_dotenv
-import ssl
 import httplib2
-
 
 load_dotenv()
 
 # Disable SSL verification — only for local dev/testing, never in production
 http = httplib2.Http(disable_ssl_certificate_validation=True)
-
 
 youtube = build(
     "youtube", 
@@ -23,12 +20,11 @@ youtube = build(
 @tool
 def get_channel_playlists(channel_id: str) -> list:
     """
-    Get all playlists for a given YouTube channel.
-    Returns a list of playlist titles and IDs.
+    Get all public playlists for a given YouTube channel.
+    Returns a list of playlist titles, IDs, and video counts.
     """
-
     response = youtube.playlists().list(
-        part="snippet",
+        part="snippet,contentDetails",
         channelId=channel_id,
         maxResults=50
     ).execute()
@@ -36,8 +32,32 @@ def get_channel_playlists(channel_id: str) -> list:
     return [
         {
             "title": item["snippet"]["title"],
-            "playlist_id": item["id"]
+            "playlist_id": item["id"],
+            "item_count": item["contentDetails"]["itemCount"],
+            "published_at": item["snippet"]["publishedAt"]
         }
-        for item in response["items"]
+        for item in response.get("items", [])
     ]
 
+
+@tool
+def get_playlist_videos(playlist_id: str, max_results: int = 25) -> list:
+    """
+    Get videos contained within a specific YouTube playlist.
+    Returns video titles, video IDs, positions, and publish dates.
+    """
+    response = youtube.playlistItems().list(
+        part="snippet,contentDetails",
+        playlistId=playlist_id,
+        maxResults=max_results
+    ).execute()
+
+    return [
+        {
+            "video_id": item["contentDetails"]["videoId"],
+            "title": item["snippet"]["title"],
+            "position": item["snippet"]["position"],
+            "published_at": item["snippet"]["publishedAt"]
+        }
+        for item in response.get("items", [])
+    ]
