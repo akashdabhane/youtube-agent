@@ -22,7 +22,7 @@ Powered by **LangGraph**, **LangChain**, **FastAPI**, **Supabase Auth**, and loc
 ## 📁 Modular Project Architecture
 
 ```text
-youtube-info-retriever-agent/
+youtube-ai-agent/
 │
 ├── youtube-ai-extension/          # Chrome Extension Manifest V3 Frontend
 │   ├── manifest.json              # Extension manifest & permissions
