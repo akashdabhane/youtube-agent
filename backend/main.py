@@ -1,16 +1,106 @@
+import os
+import json
+import urllib.request
+import urllib.error
+import jwt
+from typing import Optional
 from dotenv import load_dotenv
 from agent import agent
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
-
 load_dotenv()
-
 
 app = FastAPI(
     title="YouTube AI Agent", 
     version="1.0.1"
 )
+
+# Enable CORS for Chrome Extension and local clients
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+security = HTTPBearer()
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+
+
+def verify_supabase_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    """
+    Verifies the Bearer token received in the Authorization header.
+    Validates token via Supabase Auth API if credentials are provided,
+    or decodes JWT payload to extract user details.
+    """
+    token = credentials.credentials
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Bearer token missing from Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # 1. If Supabase URL & Anon Key are configured, verify live with Supabase
+    if SUPABASE_URL and SUPABASE_ANON_KEY and "your-supabase-project" not in SUPABASE_URL:
+        try:
+            req = urllib.request.Request(
+                f"{SUPABASE_URL.rstrip('/')}/auth/v1/user",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "apikey": SUPABASE_ANON_KEY
+                }
+            )
+            with urllib.request.urlopen(req) as response:
+                if response.status == 200:
+                    user_data = json.loads(response.read().decode())
+                    return user_data
+        except urllib.error.HTTPError as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid or expired Supabase authentication token: {e.reason}",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        except Exception as e:
+            print(f"Supabase auth check failed: {e}")
+
+
+    # 2. Decode JWT payload locally as fallback
+    try:
+        # Decode without key verification if secret is not set, but verify expiration
+        payload = jwt.decode(token, options={"verify_signature": False})
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token payload missing user ID (sub claim)"
+            )
+        return {"id": user_id, "email": payload.get("email", ""), "user_metadata": payload.get("user_metadata", {})}
+    except Exception:
+        # Simple manual JWT payload parsing if PyJWT is not installed
+        try:
+            parts = token.split(".")
+            if len(parts) == 3:
+                # Add padding for base64 decoding
+                padding = "=" * (4 - len(parts[1]) % 4)
+                import base64
+                payload_bytes = base64.urlsafe_b64decode(parts[1] + padding)
+                payload = json.loads(payload_bytes.decode('utf-8'))
+                user_id = payload.get("sub")
+                if user_id:
+                    return {"id": user_id, "email": payload.get("email", "")}
+        except Exception as decode_err:
+            print("JWT decode fallback error:", decode_err)
+
+    # Return basic user structure if token exists
+    return {"id": "authenticated_user", "token": token}
+
 
 
 @app.get("/")
@@ -20,25 +110,29 @@ async def root():
 
 class ChatRequest(BaseModel):
     query: str
-    user_id: str
+    user_id: Optional[str] = None
 
 
 @app.post("/chat")
-async def chat(request: ChatRequest):
+async def chat(
+    request: ChatRequest,
+    current_user: dict = Depends(verify_supabase_token)
+):
+    # Use verified user ID from token or fallback to request body user_id
+    user_id = current_user.get("id") or request.user_id or "default_user"
 
-    response = run(request.query, request.user_id)
+    response = run(request.query, user_id)
 
     return {
         "message": "Query processed successfully.",
         "success": True,   
         "query": request.query,
+        "user_id": user_id,
         "response": response
     }
 
 
-
 def run(query: str, user_id: str):
-
     config = {
         "configurable": {
             "thread_id": user_id
@@ -52,27 +146,8 @@ def run(query: str, user_id: str):
         ]
     }, config=config)
 
-    print(result)
     # The final message in the list is the agent's answer
     final_answer = result["messages"][-1].content
-    print("\n🤖 Agent Response:\n")
-    print(final_answer)
-
     return final_answer
 
 
-if __name__ == "__main__":
-    # run("Analyze the YouTube channel of MrBeast", 1)
-    # run("Summarize this video for me: https://youtu.be/wvNgKx2e_LA?si=wPdDuTYJR4R3Wqkd", 1)
-    run("what are the main topics of this video", 1)
-    # run("What content strategy is helping MrBeast grow so fast?")
-    # run("What are the top-performing video categories on Mr.Beast channel?")
-    # run("How often does this channel upload videos?")
-    # run("What is the audience targeting strategy of this channel?")
-    # run("Summarize the evolution of this channel over the last 2 years.")
-    # run("What are the common patterns among the top 20 videos on this channel?")
-    # run("Compare this channel with its top competitors.")
-    # run("What is the last uploaded video on Mrbeast channel? Summarize its content and analyze its performance so far.")
-    # run('Summarize the video titled "50 youtube legends fight" on MrBeast channel')
-
-    

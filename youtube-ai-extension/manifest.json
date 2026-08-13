@@ -33,6 +33,8 @@
       "resources": [
         "sidebar.html",
         "sidebar.css",
+        "config.js",
+        "auth.js",
         "sidebar.js"
       ],
       "matches": [

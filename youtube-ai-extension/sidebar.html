@@ -10,72 +10,99 @@
 
 <div class="container">
 
+    <!-- Top Header Bar -->
     <div class="header">
-        <div class="logo">
-            🤖
+        <div class="header-left">
+            <div class="logo">🤖</div>
+            <div>
+                <h2>YouTube AI</h2>
+                <span>Creator Intelligence</span>
+            </div>
         </div>
+        <button id="closeSidebar" class="close-btn" title="Close Sidebar">✕</button>
+    </div>
 
-        <div>
-            <h2>YouTube AI</h2>
-            <span>Creator Intelligence</span>
+    <!-- User Profile Status Bar (Visible when logged in) -->
+    <div id="userHeader" class="user-header hidden">
+        <div class="user-info">
+            <span class="user-badge-icon">👤</span>
+            <span id="userEmail" class="user-email">user@example.com</span>
+        </div>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
+    </div>
+
+    <!-- Auth Container (Shown when logged out) -->
+    <div id="authContainer" class="auth-container">
+        <div class="auth-card">
+            <div class="auth-tabs">
+                <button id="tabLogin" class="auth-tab active">Login</button>
+                <button id="tabRegister" class="auth-tab">Register</button>
+            </div>
+
+            <form id="authForm" class="auth-form">
+                <h3 id="authTitle">Welcome Back</h3>
+                <p id="authSubtitle" class="auth-subtitle">Sign in with Supabase to analyze videos</p>
+
+                <div id="authAlert" class="alert hidden"></div>
+
+                <div class="form-group">
+                    <label for="authEmail">Email</label>
+                    <input type="email" id="authEmail" placeholder="your@email.com" required autocomplete="email">
+                </div>
+
+                <div class="form-group">
+                    <label for="authPassword">Password</label>
+                    <input type="password" id="authPassword" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+
+                <button type="submit" id="authSubmitBtn" class="auth-submit-btn">
+                    Sign In
+                </button>
+            </form>
         </div>
     </div>
 
-    <div class="actions">
-
-        <button class="action-btn">
-            📝 Summary
-        </button>
-
-        <button class="action-btn">
-            🎯 Audience
-        </button>
-
-        <button class="action-btn">
-            📈 Growth
-        </button>
-
-        <button class="action-btn">
-            🖼 Thumbnail
-        </button>
-
-    </div>
-
-    <div id="chatContainer">
-
-        <div class="ai-message">
-            👋 Ask anything about this video.
+    <!-- Main App Container (Shown when logged in) -->
+    <div id="mainAppContainer" class="main-app-container hidden">
+        <div class="actions">
+            <button class="action-btn">📝 Summary</button>
+            <button class="action-btn">🎯 Audience</button>
+            <button class="action-btn">📈 Growth</button>
+            <button class="action-btn">🖼 Thumbnail</button>
         </div>
 
-        <div class="typing">
-            <span></span>
-            <span></span>
-            <span></span>
+        <div id="chatContainer">
+            <div class="ai-message">
+                👋 Ask anything about this video.
+            </div>
+
+            <div id="typingIndicator" class="typing hidden">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+
+            <div id="response" class="ai-message hidden">
+                <!-- AI response will be displayed here -->
+            </div>
         </div>
 
-        <div id="response" class="ai-message">
-            <!-- AI response will be displayed here -->
+        <div class="input-area">
+            <textarea
+                id="question"
+                placeholder="Ask about this video..."
+            ></textarea>
 
-
+            <button id="askBtn">
+                ➤
+            </button>
         </div>
-
-    </div>
-
-    <div class="input-area">
-
-        <textarea
-            id="question"
-            placeholder="Ask about this video..."
-        ></textarea>
-
-        <button id="askBtn">
-            ➤
-        </button>
-
     </div>
 
 </div>
 
+<script src="config.js"></script>
+<script src="auth.js"></script>
 <script src="sidebar.js"></script>
 
 </body>
