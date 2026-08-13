@@ -1,6 +1,6 @@
 # 🤖 YouTube AI Assistant - Chrome Extension & ReAct Agent Backend
 
-A full-stack, AI-powered Chrome Extension and FastAPI backend that brings Google Gemini-style video analysis, channel intelligence, sentiment analytics, and playlist inspection directly to your YouTube browser experience.
+A full-stack, AI-powered Chrome Extension and modular FastAPI backend that brings Google Gemini-style video analysis, channel intelligence, sentiment analytics, and playlist inspection directly to your YouTube browser experience.
 
 Powered by **LangGraph**, **LangChain**, **FastAPI**, **Supabase Auth**, and local/cloud LLMs (such as Ollama `qwen3:4b`, Groq `llama-3.1-8b`, or Google `gemini-2.5-flash`).
 
@@ -8,16 +8,17 @@ Powered by **LangGraph**, **LangChain**, **FastAPI**, **Supabase Auth**, and loc
 
 ## 🌟 Key Features
 
-- 🎥 **Context-Aware YouTube Analysis**: Automatically detects the active YouTube URL (Video, Channel, Playlist, or Homepage) and extracts relevant IDs without manual input.
+- 🎥 **Context-Aware YouTube Analysis**: Automatically detects active YouTube URLs (Video, Channel, Playlist, or Homepage) and extracts relevant IDs without manual input.
 - 🔐 **Supabase Authentication**: Full Login & Register user management integrated directly into the Chrome extension with JWT token storage in `localStorage` and `chrome.storage.local`.
-- 🛡️ **Secure FastAPI Backend**: Protected `/chat` API endpoints using FastAPI `HTTPBearer` security middleware to verify Supabase authentication headers.
+- 🧱 **Modular FastAPI Architecture**: Refactored modular backend with clean separation of concerns across authentication, route controllers, schemas, services, and ReAct tools.
+- 🛡️ **Secure Token Verification**: Protected `/chat` API endpoints using FastAPI `HTTPBearer` security middleware to verify Supabase authentication headers.
 - 🎨 **Modern Glassmorphic Sidebar UI**: Sleek dark-mode extension sidebar with auto-scrolling conversation bubbles, animated typing indicators, and auto-hiding floating action button.
 - 🧠 **22 Specialized AI Tools**: Comprehensive tool suite for channel growth, video specs, sentiment analysis, comment topic mining, playlist contents, and global trending search.
 - 🤖 **LLM Provider Agnostic**: Configured to run seamlessly on lightweight local models (`qwen3:4b` via Ollama) as well as cloud LLMs (Groq, Gemini).
 
 ---
 
-## 📁 Project Architecture
+## 📁 Modular Project Architecture
 
 ```text
 youtube-info-retriever-agent/
@@ -31,11 +32,23 @@ youtube-info-retriever-agent/
 │   ├── auth.js                    # Supabase Auth REST API client & storage manager
 │   └── config.js                  # Supabase & API endpoint configuration
 │
-└── backend/                       # FastAPI & LangGraph AI Agent Server
-    ├── main.py                    # FastAPI server, CORS, Bearer auth & recovery logic
+└── backend/                       # FastAPI & LangGraph AI Agent Backend
+    ├── main.py                    # Entry point initializing FastAPI app & mounting routers
     ├── agent.py                   # LangGraph ReAct agent & prompt engineering
-    ├── .env                       # API Keys (YouTube API, Supabase, LLM keys)
+    ├── .env                       # Environment variables (YouTube API key, Supabase credentials)
     ├── requirements.txt           # Python dependencies
+    │
+    ├── auth/                      # Authentication Layer
+    │   └── auth.py                # Supabase JWT token verification & HTTPBearer security
+    │
+    ├── routes/                    # API Route Controllers
+    │   └── chat_routes.py         # /chat POST endpoint & thread memory recovery logic
+    │
+    ├── schemas/                   # Pydantic Request & Response Data Schemas
+    │   └── chat_schema.py         # ChatRequest model (query, url, user_id)
+    │
+    ├── services/                  # Business Logic & Service Layers
+    │
     └── tools/                     # 22 Specialized YouTube Intelligence Tools
         ├── channel_tools.py       # Channel stats, handles, comparisons, growth & age
         ├── video_tools.py         # Video stats, specs, duration, tags & comments
@@ -108,7 +121,7 @@ youtube-info-retriever-agent/
 
 5. Start the FastAPI server:
    ```bash
-   python main.py
+   uvicorn main:app --reload --port 8000
    ```
    *The server will run on `http://localhost:8000`.*
 

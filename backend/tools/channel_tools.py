@@ -1,18 +1,9 @@
 from tools.video_tools import get_recent_videos
 from langchain_core.tools import tool
-from googleapiclient.discovery import build
-import os
-from dotenv import load_dotenv
-import httplib2
 from datetime import datetime
 from sklearn.feature_extraction.text import CountVectorizer
+from lib.youtube import youtube
 
-load_dotenv()
-
-# Disable SSL verification — only for local dev/testing, never in production
-http = httplib2.Http(disable_ssl_certificate_validation=True)
-
-youtube = build("youtube", "v3", developerKey=os.getenv("YOUTUBE_API_KEY"), http=http)
 
 
 @tool

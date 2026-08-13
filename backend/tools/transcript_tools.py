@@ -1,7 +1,5 @@
-from youtube_transcript_api import YouTubeTranscriptApi
 from langchain_core.tools import tool
-
-ytt_api = YouTubeTranscriptApi()
+from lib.youtube import ytt_api
 
 @tool
 def get_video_transcript(video_id: str) -> str:
