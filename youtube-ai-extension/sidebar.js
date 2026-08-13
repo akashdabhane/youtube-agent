@@ -28,13 +28,8 @@ button.addEventListener(
                     },
 
                     body: JSON.stringify({
-                        query: `
-            Current video:
-            ${url}
-
-            User Question:
-            ${query}
-            `
+                        query,
+                        user_id: "1"
                     })
                 }
             );
@@ -45,7 +40,7 @@ button.addEventListener(
         document.getElementById(
             "response"
         ).innerText =
-            data.response;
+            data.response[0].text;
     }
 );
 
