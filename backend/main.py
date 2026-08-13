@@ -1,14 +1,15 @@
 from dotenv import load_dotenv
 from agent import agent
 from fastapi import FastAPI
+from pydantic import BaseModel
 
 
 load_dotenv()
 
 
 app = FastAPI(
-    title="YouTube Channel Analysis Agent", 
-    version="1.0.0"
+    title="YouTube AI Agent", 
+    version="1.0.1"
 )
 
 
@@ -17,21 +18,27 @@ async def root():
     return {"message": "Welcome to the YouTube Channel Analysis Agent!"}
 
 
-@app.post("/chat")
-async def chat(query: str, user_id: str):
+class ChatRequest(BaseModel):
+    query: str
+    user_id: str
 
-    response = run(query, user_id)
+
+@app.post("/chat")
+async def chat(request: ChatRequest):
+
+    response = run(request.query, request.user_id)
 
     return {
-        "message": "Query processed successfully. Check the console for the agent's response.",
+        "message": "Query processed successfully.",
         "success": True,   
-        "query": query,
+        "query": request.query,
         "response": response
     }
 
 
 
 def run(query: str, user_id: str):
+
     config = {
         "configurable": {
             "thread_id": user_id
