@@ -8,10 +8,11 @@ Powered by **LangGraph**, **LangChain**, **FastAPI**, **Supabase Auth**, and loc
 
 ## 🌟 Key Features
 
+- ⚡ **Real-Time Token Streaming**: Streams LLM token responses word-by-word into the Chrome extension live via a dedicated `/chat/stream` SSE endpoint (`StreamingResponse` + LangGraph `astream_events`).
 - 🎥 **Context-Aware YouTube Analysis**: Automatically detects active YouTube URLs (Video, Channel, Playlist, or Homepage) and extracts relevant IDs without manual input.
 - 🔐 **Supabase Authentication**: Full Login & Register user management integrated directly into the Chrome extension with JWT token storage in `localStorage` and `chrome.storage.local`.
-- 🧱 **Modular FastAPI Architecture**: Refactored modular backend with clean separation of concerns across authentication, route controllers, schemas, services, and ReAct tools.
-- 🛡️ **Secure Token Verification**: Protected `/chat` API endpoints using FastAPI `HTTPBearer` security middleware to verify Supabase authentication headers.
+- 🧱 **Modular FastAPI Architecture**: Clean separation of concerns across authentication, API routes, request schemas, services, and ReAct tools.
+- 🛡️ **Dual Endpoints & Secure Token Verification**: Supports both `/chat` (standard JSON) and `/chat/stream` (real-time stream), protected by FastAPI `HTTPBearer` security middleware.
 - 🎨 **Modern Glassmorphic Sidebar UI**: Sleek dark-mode extension sidebar with auto-scrolling conversation bubbles, animated typing indicators, and auto-hiding floating action button.
 - 🧠 **22 Specialized AI Tools**: Comprehensive tool suite for channel growth, video specs, sentiment analysis, comment topic mining, playlist contents, and global trending search.
 - 🤖 **LLM Provider Agnostic**: Configured to run seamlessly on lightweight local models (`qwen3:4b` via Ollama) as well as cloud LLMs (Groq, Gemini).
@@ -28,9 +29,9 @@ youtube-info-retriever-agent/
 │   ├── content.js                 # Content script for modern floating action button (FAB)
 │   ├── sidebar.html               # Main extension sidebar UI structure
 │   ├── sidebar.css                # Glassmorphism dark-theme styling
-│   ├── sidebar.js                 # Chat UI logic, message sequence & tab URL context
+│   ├── sidebar.js                 # Chat UI logic, real-time ReadableStream reader & URL context
 │   ├── auth.js                    # Supabase Auth REST API client & storage manager
-│   └── config.js                  # Supabase & API endpoint configuration
+│   └── config.js                  # Supabase credentials & streaming endpoint configuration
 │
 └── backend/                       # FastAPI & LangGraph AI Agent Backend
     ├── main.py                    # Entry point initializing FastAPI app & mounting routers
@@ -42,7 +43,7 @@ youtube-info-retriever-agent/
     │   └── auth.py                # Supabase JWT token verification & HTTPBearer security
     │
     ├── routes/                    # API Route Controllers
-    │   └── chat_routes.py         # /chat POST endpoint & thread memory recovery logic
+    │   └── chat_routes.py         # /chat (JSON) & /chat/stream (SSE) endpoints with memory recovery
     │
     ├── schemas/                   # Pydantic Request & Response Data Schemas
     │   └── chat_schema.py         # ChatRequest model (query, url, user_id)
@@ -57,6 +58,16 @@ youtube-info-retriever-agent/
         ├── sentiment_tools.py     # VADER sentiment analysis & comment topic extraction
         └── transcript_tools.py    # YouTube video captions & transcript extraction
 ```
+
+---
+
+## 🔌 API Endpoints Summary
+
+| Method | Endpoint | Response Type | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/chat` | `application/json` | Standard endpoint returning the complete answer in a single JSON payload |
+| `POST` | `/chat/stream` | `text/event-stream` | **Real-time streaming endpoint** emitting LLM token chunks live as they are generated |
+| `GET` | `/` | `application/json` | Server health check endpoint |
 
 ---
 
@@ -129,12 +140,17 @@ youtube-info-retriever-agent/
 
 ### 2. Chrome Extension Setup
 
-1. Open `youtube-ai-extension/config.js` and update your Supabase credentials:
+1. Open `youtube-ai-extension/config.js` and configure endpoints and streaming toggle:
    ```javascript
    const CONFIG = {
        SUPABASE_URL: "https://your-project.supabase.co",
        SUPABASE_ANON_KEY: "your-supabase-anon-key",
-       BACKEND_API_URL: "http://localhost:8000"
+       BACKEND_API_URL: "http://localhost:8000",
+
+       // Set to true to stream tokens live (/chat/stream) or false for standard JSON (/chat)
+       ENABLE_STREAMING: true,
+       CHAT_ENDPOINT: "/chat",
+       STREAM_ENDPOINT: "/chat/stream"
    };
    ```
 
@@ -153,5 +169,4 @@ youtube-info-retriever-agent/
 | **Channel Page** | *"What is the engagement rate and upload frequency of this channel?"* | `calculate_channel_engagement_rate`, `analyze_upload_frequency` |
 | **Playlist Page** | *"List the videos inside this playlist with their titles."* | `get_playlist_videos` |
 | **Home Page** | *"What are the top trending videos right now in the US?"* | `get_trending_videos`, `search_global_videos` |
-
 

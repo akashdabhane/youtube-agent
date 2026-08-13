@@ -1,4 +1,4 @@
-// sidebar.js - Handles Extension Auth State & Dynamic Chat Messages
+// sidebar.js - Handles Extension Auth State & Dynamic Chat Messages (Streaming & Non-Streaming)
 
 let currentAuthMode = "login"; // "login" or "register"
 
@@ -212,7 +212,7 @@ function scrollToBottom() {
     }
 }
 
-// Send chat message and dynamically render user & AI response bubbles sequentially
+// Send chat message and dynamically render user & AI response bubbles (Supports /chat and /chat/stream)
 async function sendChatMessage() {
     const questionInput = document.getElementById("question");
     const query = questionInput.value.trim();
@@ -249,6 +249,9 @@ async function sendChatMessage() {
 
     try {
         const backendUrl = CONFIG.BACKEND_API_URL || "http://localhost:8000";
+        const isStreaming = CONFIG.ENABLE_STREAMING !== false;
+        const endpoint = isStreaming ? (CONFIG.STREAM_ENDPOINT || "/chat/stream") : (CONFIG.CHAT_ENDPOINT || "/chat");
+        const targetUrl = `${backendUrl}${endpoint}`;
 
         // Get active YouTube tab URL from Chrome tabs API or referrer fallback
         let activeTabUrl = "";
@@ -267,48 +270,101 @@ async function sendChatMessage() {
             activeTabUrl = document.referrer || window.location.href;
         }
 
-        // 4. Fetch request with Bearer token header & active page URL
-        const response = await fetch(`${backendUrl}/chat`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                query: query,
-                url: activeTabUrl,
-                user_id: user ? user.id : "1"
-            })
-        });
+        const requestBody = {
+            query: query,
+            url: activeTabUrl,
+            user_id: user ? user.id : "1"
+        };
 
-        const data = await response.json();
+        if (isStreaming) {
+            // Real-Time Token Streaming via /chat/stream
+            const response = await fetch(targetUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(requestBody)
+            });
 
-        // 5. Hide typing indicator
-        typingIndicator.classList.add("hidden");
+            if (!response.ok) {
+                typingIndicator.classList.add("hidden");
+                const errMessageDiv = document.createElement("div");
+                errMessageDiv.className = "ai-message";
+                errMessageDiv.innerText = `Error: ${response.statusText || "Failed to process query."}`;
+                chatContainer.appendChild(errMessageDiv);
+                scrollToBottom();
+                return;
+            }
 
-        // 6. Append AI Response Bubble directly to chatContainer (Left Side)
-        const aiMessageDiv = document.createElement("div");
-        aiMessageDiv.className = "ai-message";
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
 
-        if (response.ok) {
-            aiMessageDiv.innerText = data.response || "No response received.";
+            let aiMessageDiv = null;
+            let isFirstChunk = true;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const textChunk = decoder.decode(value, { stream: true });
+                if (textChunk) {
+                    if (isFirstChunk) {
+                        typingIndicator.classList.add("hidden");
+                        aiMessageDiv = document.createElement("div");
+                        aiMessageDiv.className = "ai-message";
+                        chatContainer.appendChild(aiMessageDiv);
+                        isFirstChunk = false;
+                    }
+                    aiMessageDiv.innerText += textChunk;
+                    scrollToBottom();
+                }
+            }
+
+            if (isFirstChunk) {
+                typingIndicator.classList.add("hidden");
+                const emptyMessageDiv = document.createElement("div");
+                emptyMessageDiv.className = "ai-message";
+                emptyMessageDiv.innerText = "No response received.";
+                chatContainer.appendChild(emptyMessageDiv);
+                scrollToBottom();
+            }
+
         } else {
-            aiMessageDiv.innerText = `Error: ${data.detail || "Failed to process query."}`;
-        }
+            // Standard Non-Streaming JSON Response via /chat
+            const response = await fetch(targetUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(requestBody)
+            });
 
-        chatContainer.appendChild(aiMessageDiv);
-        scrollToBottom();
+            const data = await response.json();
+            typingIndicator.classList.add("hidden");
+
+            const aiMessageDiv = document.createElement("div");
+            aiMessageDiv.className = "ai-message";
+
+            if (response.ok) {
+                aiMessageDiv.innerText = data.response || "No response received.";
+            } else {
+                aiMessageDiv.innerText = `Error: ${data.detail || "Failed to process query."}`;
+            }
+
+            chatContainer.appendChild(aiMessageDiv);
+            scrollToBottom();
+        }
 
     } catch (error) {
         console.error("Fetch Error:", error);
 
-        // Hide typing indicator
         typingIndicator.classList.add("hidden");
 
-        // Append Error Message Bubble
         const errorMessageDiv = document.createElement("div");
         errorMessageDiv.className = "ai-message";
-        errorMessageDiv.innerText = "Error connecting to backend server.";
+        errorMessageDiv.innerText = "Error connecting to backend server. Make sure FastAPI server is running.";
         chatContainer.appendChild(errorMessageDiv);
         scrollToBottom();
     }
